@@ -2,19 +2,11 @@ package main
 
 import "sync"
 
-const countdoku = 25
-
 func main() {
-	/*
-		ui := UI{}
-		defer ui.cleanup()
-		ui.init()
-		ui.block()
-	*/
 
 	taskChan := make(chan *Task)
-	retryChan := make(chan *Task, countdoku*2)
-	for i := 0; i < countdoku; i++ {
+	retryChan := make(chan *Task, 10) // TODO
+	for i := 0; i < 3; i++ {
 		worker := new(Worker)
 		go worker.consume(taskChan, retryChan)
 	}
