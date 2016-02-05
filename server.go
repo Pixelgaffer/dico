@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	protos "./protos"
+	protos "github.com/Pixelgaffer/dico-proto"
 
 	"github.com/golang/protobuf/proto"
 )

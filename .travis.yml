@@ -1,3 +1,4 @@
+sudo: false
 language: go
 go:
   - 1.5.3
@@ -7,18 +8,14 @@ env:
     - BUILD_GOARCH=amd64
   matrix:
     - BUILD_GOOS=linux
-    - BUILD_GOOS=darwin
-    - BUILD_GOOS=windows
+    #- BUILD_GOOS=darwin
+    #- BUILD_GOOS=windows
 install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y protobuf-compiler
   - go get golang.org/x/tools/cmd/vet
-  - go get github.com/golang/protobuf/protoc-gen-go
   - go get -v github.com/Pixelgaffer/dicod
 script:
-  - protoc  --go_out=. protos/**.proto
   - go build
   - go fmt ./...
   - go vet ./...
-#- go test -i -race ./...
-#- go test -v -race ./...
+  #- go test -i -race ./...
+  #- go test -v -race ./...
