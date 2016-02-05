@@ -1,7 +1,7 @@
 language: go
 go:
-- 1.5.3
-- tip
+  - 1.5.3
+  - tip
 env:
   global:
     - BUILD_GOARCH=amd64
@@ -10,12 +10,15 @@ env:
     - BUILD_GOOS=darwin
     - BUILD_GOOS=windows
 install:
-- go get golang.org/x/tools/cmd/vet
-- go get github.com/golang/protobuf/protoc-gen-go
-- go get -v github.com/Pixelgaffer/dicod
+  - sudo apt-get update -qq
+  - sudo apt-get install -y protobuf-compiler
+  - go get golang.org/x/tools/cmd/vet
+  - go get github.com/golang/protobuf/protoc-gen-go
+  - go get -v github.com/Pixelgaffer/dicod
 script:
-- go build
-- go fmt ./...
-- go vet ./...
+  - protoc  --go_out=. protobuf-src/**.proto
+  - go build
+  - go fmt ./...
+  - go vet ./...
 #- go test -i -race ./...
 #- go test -v -race ./...
