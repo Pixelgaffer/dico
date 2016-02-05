@@ -3,6 +3,7 @@ package main
 import "sync"
 
 func main() {
+	listen()
 
 	taskChan := make(chan *Task)
 	retryChan := make(chan *Task, 10) // TODO
