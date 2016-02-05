@@ -1,0 +1,3 @@
+[submodule "protobuf-src"]
+	path = protobuf-src
+	url = https://github.com/Pixelgaffer/dico-proto.git
