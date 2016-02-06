@@ -23,12 +23,15 @@ type Connection struct {
 }
 
 func (c *Connection) init(handshake protos.Handshake) {
-	c.send = make(chan proto.Message, 100) // TODO
+	fmt.Println("new Connection: runs_tasks", handshake.GetRunsTasks(), "manages_tasks", handshake.GetManagesTasks())
+	c.send = make(chan proto.Message, 10) // TODO
 	c.recv = make(chan proto.Message)
 	c.handshake = handshake
 	c.name = handshake.GetName()
 	if handshake.GetRunsTasks() {
 		c.worker = &Worker{}
+		go c.worker.consume()
+		fmt.Println("new worker consuming:", c.worker)
 	}
 }
 
@@ -38,6 +41,15 @@ func (c *Connection) handle() {
 		switch v := msg.(type) {
 		case *protos.SubmitTask:
 			fmt.Println("taskSubmit", v)
+			if v.GetMulti() {
+				generateTasks(v.GetOptions())
+			} else {
+				t := &Task{}
+				t.id = currTaskId
+				currTaskId++
+				t.options = v.GetOptions()
+				taskChan <- t
+			}
 		default:
 			fmt.Println(proto.MessageName(msg), v)
 		}
@@ -51,6 +63,7 @@ func workers() (c chan *Worker) {
 				c <- conn.worker
 			}
 		}
+		close(c)
 	}()
 	return c
 }
@@ -62,6 +75,7 @@ func managers() (c chan *Connection) {
 				c <- conn
 			}
 		}
+		close(c)
 	}()
 	return c
 }

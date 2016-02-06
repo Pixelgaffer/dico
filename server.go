@@ -11,11 +11,11 @@ import (
 
 func handleClient(conn net.Conn) {
 	defer conn.Close()
-
 	data := make([]byte, 4096)
 	n, err := conn.Read(data)
 	checkErr(err)
 	fmt.Println("Decoding Handshake")
+	fmt.Println(data[0:n])
 	hs, err := protos.DecodeUnknownMessage(data[0:n])
 	checkErr(err)
 	connection := &Connection{}

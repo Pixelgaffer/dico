@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"unicode/utf8"
 )
 
@@ -341,7 +340,7 @@ func (i *RangeIterator) length() int         { return i.cycleLength }
 func (i *RangeIterator) finished() bool      { return i.currentCycle == 0 && i.tmpCycle == 0 }
 func (i *RangeIterator) setCyclePos(pos int) { i.cyclepos = pos }
 
-func generateTasks(optionGen string, taskChan chan *Task, wg *sync.WaitGroup) {
+func generateTasks(optionGen string) {
 	//optionGen = "--compute -x \\[0..0.2..10] -y \\(on|off) -kek \\(1|2|3) \\[ 1.. ]"
 	//optionGen = "\\(one|two|3) \\(eins|zwei|drei)"
 	fmt.Println(optionGen)
@@ -389,22 +388,20 @@ func generateTasks(optionGen string, taskChan chan *Task, wg *sync.WaitGroup) {
 		cyclepos *= sortable[i].length()
 	}
 
-	var taskCount int
 	for {
 		s := ""
 		for i := 0; i < len(iterators); i++ {
 			s += iterators[i].get()
 			iterators[i].cycle()
 		}
-		wg.Add(1)
 		task := new(Task)
-		task.id = taskCount
-		task.wg = wg
+		task.id = currTaskId
+		currTaskId++
 		task.options = s
+		fmt.Println("generated", task)
 		taskChan <- task
 		if iterators[len(iterators)-1].finished() {
 			return
 		}
-		taskCount++
 	}
 }

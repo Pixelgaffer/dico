@@ -5,7 +5,8 @@ import "fmt"
 type Worker struct {
 }
 
-func (w *Worker) consume(taskChan, retryChan chan *Task) {
+func (w *Worker) consume() {
+	fmt.Println("consume()", taskChan)
 	for task := range taskChan {
 		task.worker = w
 		task.execute()
@@ -14,4 +15,5 @@ func (w *Worker) consume(taskChan, retryChan chan *Task) {
 			fmt.Println("resubmitted", task.id)
 		}
 	}
+	panic("taskChan closed")
 }

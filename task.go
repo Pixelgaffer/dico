@@ -3,17 +3,15 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"sync"
 	"time"
 )
 
 type Task struct {
 	options string
-	id      int
-	retries int
+	id      int64
+	retries int64
 	failed  bool
 	worker  *Worker
-	wg      *sync.WaitGroup
 }
 
 func (t *Task) execute() {
@@ -27,6 +25,4 @@ func (t *Task) execute() {
 		t.failed = true
 		return
 	}
-
-	t.wg.Done()
 }
