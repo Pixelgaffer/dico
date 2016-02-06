@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 
@@ -17,17 +16,56 @@ func handleClient(conn net.Conn) {
 	n, err := conn.Read(data)
 	checkErr(err)
 	fmt.Println("Decoding Handshake")
-	protodata := new(protos.Handshake)
-	err = proto.Unmarshal(data[0:n], protodata)
+	hs, err := protos.DecodeUnknownMessage(data[0:n])
 	checkErr(err)
+	connection := &Connection{}
+	connection.init(*hs.(*protos.Handshake))
+	connection.conn = &conn
+	connectionsLock.Lock()
+	connections = append(connections, connection)
+	connectionsLock.Unlock()
+
+	go connection.handle()
+
+	doneCh := make(chan interface{})
+
+	go func() {
+		for {
+			data := make([]byte, 4096)
+			n, err := conn.Read(data)
+			if err != nil {
+				fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
+				connection.dead = true
+				return
+			}
+			fmt.Println("Decoding Packet")
+			fmt.Println(data[0:n])
+			msg, err := protos.DecodeUnknownMessage(data[0:n])
+			if err != nil {
+				connection.dead = true
+				conn.Close()
+				fmt.Println(err)
+				return
+			}
+			connection.recv <- msg
+		}
+	}()
 
 	for {
-		msg, err := bufio.NewReader(conn).ReadString('\n')
-		if err != nil {
-			fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
+		select {
+		case <-doneCh:
 			return
+		case msg := <-connection.send:
+			wrapped := protos.WrapMessage(msg)
+			data, err := proto.Marshal(wrapped)
+			checkErr(err)
+			_, err = conn.Write(data)
+			if err != nil {
+				fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
+				connection.dead = true
+				return
+			}
 		}
-		conn.Write([]byte(msg + "\n"))
 	}
 }
 
