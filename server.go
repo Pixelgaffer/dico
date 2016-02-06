@@ -11,7 +11,7 @@ import (
 
 func handleClient(conn net.Conn) {
 	defer conn.Close()
-	buff, err := readPacket(conn)
+	buff, err := protos.ReadPacket(conn)
 	checkErr(err)
 	fmt.Println("Decoding Handshake")
 	fmt.Println(buff)
@@ -30,8 +30,9 @@ func handleClient(conn net.Conn) {
 
 	go func() {
 		for {
-			buff, err := readPacket(conn)
+			buff, err := protos.ReadPacket(conn)
 			if err != nil {
+				fmt.Println(err)
 				fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
 				connection.dead = true
 				return
@@ -57,8 +58,9 @@ func handleClient(conn net.Conn) {
 			wrapped := protos.WrapMessage(msg)
 			data, err := proto.Marshal(wrapped)
 			checkErr(err)
-			err = writePacket(conn, data)
+			err = protos.WritePacket(conn, data)
 			if err != nil {
+				fmt.Println(err)
 				fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
 				connection.dead = true
 				return

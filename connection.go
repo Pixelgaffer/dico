@@ -29,7 +29,10 @@ func (c *Connection) init(handshake protos.Handshake) {
 	c.handshake = handshake
 	c.name = handshake.GetName()
 	if handshake.GetRunsTasks() {
-		c.worker = &Worker{}
+		c.worker = &Worker{
+			connection:     c,
+			taskStatusChan: make(chan *protos.TaskStatus),
+		}
 		go c.worker.consume()
 		fmt.Println("new worker consuming:", c.worker)
 	}
