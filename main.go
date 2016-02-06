@@ -2,7 +2,6 @@ package main
 
 var taskChan chan *Task
 var retryChan chan *Task
-var currTaskId int64
 
 func main() {
 	taskChan = make(chan *Task)

@@ -395,8 +395,7 @@ func generateTasks(optionGen string) {
 			iterators[i].cycle()
 		}
 		task := new(Task)
-		task.id = currTaskId
-		currTaskId++
+		task.id = getNextTaskID()
 		task.options = s
 		fmt.Println("generated", task)
 		taskChan <- task

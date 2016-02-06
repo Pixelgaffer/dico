@@ -3,11 +3,16 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	protos "github.com/Pixelgaffer/dico-proto"
 	"github.com/golang/protobuf/proto"
 )
+
+var currTaskId int64
+var taskIdLock sync.Mutex
 
 type Task struct {
 	options string
@@ -34,4 +39,8 @@ func (t *Task) execute(c *Connection) {
 		return
 	}
 	fmt.Println("finished executing task", t.id)
+}
+
+func getNextTaskID() int64 {
+	return atomic.AddInt64(&currTaskId, 1) - 1
 }
