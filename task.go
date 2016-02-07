@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	protos "github.com/Pixelgaffer/dico-proto"
 	"github.com/golang/protobuf/proto"
@@ -30,25 +28,17 @@ func (t *Task) reportStatus(typ protos.TaskStatus_TaskStatusUpdate) {
 		Retries: proto.Int64(t.retries),
 	}
 	m.Type = &typ
-	//DEBUG: //FIXME
-	fmt.Println("orig:")
-	fmt.Println(proto.Marshal(m))
-	wrappd := protos.WrapMessage(m)
-	fmt.Println("wrapped:")
-	fmt.Println(proto.Marshal(wrappd))
 
 	for mang := range managers() {
-		fmt.Println("reporting status to", mang, mang.send)
 		mang.send <- m
 	}
-	fmt.Println("reported status", typ)
 }
 
-func (t *Task) reportResult(result string) {
+func (t *Task) reportResult(data []byte) {
 	m := &protos.TaskResult{
 		Id:      proto.Int64(t.id),
 		Options: proto.String(t.options),
-		Data:    []byte(result),
+		Data:    data,
 	}
 	for mang := range managers() {
 		mang.send <- m
@@ -65,18 +55,26 @@ func (t *Task) execute(c *Connection) {
 		JobType: proto.String("TODO"),
 	}
 	t.reportStatus(protos.TaskStatus_STARTED)
-	for i := 0; i < rand.Intn(10000)+10000; i++ {
-		time.Sleep(time.Millisecond)
+	for {
+		select {
+		case status := <-t.worker.taskStatusChan:
+			switch status.GetType() {
+			case protos.TaskStatus_FAILED:
+				fmt.Println("task failed:", t.id)
+				t.failed = true
+				t.reportStatus(status.GetType())
+				return
+			case protos.TaskStatus_FINISHED:
+				t.reportStatus(status.GetType())
+			default:
+				fmt.Println("invalid status.Type")
+			}
+		case result := <-t.worker.taskResultChan:
+			fmt.Println("got task result")
+			t.reportResult(result.Data)
+			return
+		}
 	}
-	if rand.Intn(100) <= 5 {
-		fmt.Println("task", t.id, "failed!")
-		t.failed = true
-		t.reportStatus(protos.TaskStatus_FAILED)
-		return
-	}
-	t.reportStatus(protos.TaskStatus_FINISHED)
-	t.reportResult("huehuehue fake results huehuehue")
-	fmt.Println("finished executing task", t.id)
 }
 
 func getNextTaskID() int64 {

@@ -34,6 +34,7 @@ func (c *Connection) init(handshake protos.Handshake) {
 		c.worker = &Worker{
 			connection:     c,
 			taskStatusChan: make(chan *protos.TaskStatus),
+			taskResultChan: make(chan *protos.TaskResult),
 		}
 		go c.worker.consume()
 		fmt.Println("new worker consuming:", c.worker)
@@ -43,6 +44,7 @@ func (c *Connection) init(handshake protos.Handshake) {
 func (c *Connection) handle() {
 	for {
 		msg := <-c.recv
+		fmt.Println(msg)
 		switch v := msg.(type) {
 		case *protos.SubmitTask:
 			fmt.Println("taskSubmit", v)
@@ -54,6 +56,10 @@ func (c *Connection) handle() {
 				t.options = v.GetOptions()
 				taskChan <- t
 			}
+		case *protos.TaskStatus:
+			c.worker.taskStatusChan <- v
+		case *protos.TaskResult:
+			c.worker.taskResultChan <- v
 		default:
 			fmt.Println(proto.MessageName(msg), v)
 		}

@@ -7,6 +7,7 @@ import protos "github.com/Pixelgaffer/dico-proto"
 type Worker struct {
 	connection     *Connection
 	taskStatusChan chan *protos.TaskStatus
+	taskResultChan chan *protos.TaskResult
 }
 
 func (w *Worker) consume() {
