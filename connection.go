@@ -12,6 +12,7 @@ import (
 var connections []*Connection
 var connectionsLock sync.Mutex
 
+// Connection holds client-specific data
 type Connection struct {
 	name      string
 	worker    *Worker
@@ -25,6 +26,7 @@ type Connection struct {
 func (c *Connection) init(handshake protos.Handshake) {
 	fmt.Println("new Connection: runs_tasks", handshake.GetRunsTasks(), "manages_tasks", handshake.GetManagesTasks())
 	c.send = make(chan proto.Message, 10) // TODO
+	fmt.Println("c.send is:", c.send)
 	c.recv = make(chan proto.Message)
 	c.handshake = handshake
 	c.name = handshake.GetName()
@@ -48,8 +50,7 @@ func (c *Connection) handle() {
 				generateTasks(v.GetOptions())
 			} else {
 				t := &Task{}
-				t.id = currTaskId
-				currTaskId++
+				t.id = getNextTaskID()
 				t.options = v.GetOptions()
 				taskChan <- t
 			}
@@ -59,7 +60,9 @@ func (c *Connection) handle() {
 	}
 }
 
-func workers() (c chan *Worker) {
+func workers() chan *Worker {
+	connectionsLock.Lock()
+	c := make(chan *Worker, len(connections))
 	go func() {
 		for _, conn := range connections {
 			if !conn.dead && conn.handshake.GetRunsTasks() {
@@ -67,11 +70,14 @@ func workers() (c chan *Worker) {
 			}
 		}
 		close(c)
+		connectionsLock.Unlock()
 	}()
 	return c
 }
 
-func managers() (c chan *Connection) {
+func managers() chan *Connection {
+	connectionsLock.Lock()
+	c := make(chan *Connection, len(connections))
 	go func() {
 		for _, conn := range connections {
 			if !conn.dead && conn.handshake.GetRecievesStats() {
@@ -79,6 +85,7 @@ func managers() (c chan *Connection) {
 			}
 		}
 		close(c)
+		connectionsLock.Unlock()
 	}()
 	return c
 }

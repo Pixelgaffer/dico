@@ -55,6 +55,7 @@ func handleClient(conn net.Conn) {
 		case <-doneCh:
 			return
 		case msg := <-connection.send:
+			fmt.Println("sending to", conn.RemoteAddr(), msg)
 			wrapped := protos.WrapMessage(msg)
 			data, err := proto.Marshal(wrapped)
 			checkErr(err)
