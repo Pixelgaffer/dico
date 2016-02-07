@@ -18,32 +18,28 @@ func handleClient(conn net.Conn) {
 	hs, err := protos.DecodeUnknownMessage(buff)
 	checkErr(err)
 	connection := &Connection{}
-	connection.init(*hs.(*protos.Handshake))
 	connection.conn = &conn
+	connection.init(*hs.(*protos.Handshake))
 	connectionsLock.Lock()
 	connections = append(connections, connection)
 	connectionsLock.Unlock()
 
 	go connection.handle()
 
-	doneCh := make(chan interface{})
-
 	go func() {
 		for {
 			buff, err := protos.ReadPacket(conn)
 			if err != nil {
 				fmt.Println(err)
-				fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
-				connection.dead = true
+				connection.kill()
 				return
 			}
 			fmt.Println("Decoding Packet")
 			fmt.Println(buff)
 			msg, err := protos.DecodeUnknownMessage(buff)
 			if err != nil {
-				connection.dead = true
-				conn.Close()
 				fmt.Println(err)
+				connection.kill()
 				return
 			}
 			connection.recv <- msg
@@ -52,7 +48,7 @@ func handleClient(conn net.Conn) {
 
 	for {
 		select {
-		case <-doneCh:
+		case <-connection.doneCh:
 			return
 		case msg := <-connection.send:
 			fmt.Println("sending to", conn.RemoteAddr(), msg)
@@ -62,9 +58,7 @@ func handleClient(conn net.Conn) {
 			err = protos.WritePacket(conn, data)
 			if err != nil {
 				fmt.Println(err)
-				fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
-				connection.dead = true
-				return
+				close(connection.doneCh)
 			}
 		}
 	}

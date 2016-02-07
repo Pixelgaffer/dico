@@ -20,7 +20,7 @@ type Connection struct {
 	handshake protos.Handshake
 	send      chan proto.Message
 	recv      chan proto.Message
-	dead      bool
+	doneCh    chan interface{}
 }
 
 func (c *Connection) init(handshake protos.Handshake) {
@@ -28,6 +28,7 @@ func (c *Connection) init(handshake protos.Handshake) {
 	c.send = make(chan proto.Message, 10) // TODO
 	fmt.Println("c.send is:", c.send)
 	c.recv = make(chan proto.Message)
+	c.doneCh = make(chan interface{})
 	c.handshake = handshake
 	c.name = handshake.GetName()
 	if handshake.GetRunsTasks() {
@@ -42,8 +43,13 @@ func (c *Connection) init(handshake protos.Handshake) {
 }
 
 func (c *Connection) handle() {
+	var msg proto.Message
 	for {
-		msg := <-c.recv
+		select {
+		case <-c.doneCh:
+			return
+		case msg = <-c.recv:
+		}
 		fmt.Println(msg)
 		switch v := msg.(type) {
 		case *protos.SubmitTask:
@@ -66,12 +72,31 @@ func (c *Connection) handle() {
 	}
 }
 
+func (c *Connection) alive() bool {
+	select {
+	case <-c.doneCh:
+		return false
+	default:
+		return true
+	}
+}
+
+func (c *Connection) kill() {
+	if c.alive() {
+		conn := *c.conn
+		fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
+		close(c.doneCh)
+	} else {
+		fmt.Println(".kill on dead connection")
+	}
+}
+
 func workers() chan *Worker {
 	connectionsLock.Lock()
 	c := make(chan *Worker, len(connections))
 	go func() {
 		for _, conn := range connections {
-			if !conn.dead && conn.handshake.GetRunsTasks() {
+			if conn.alive() && conn.handshake.GetRunsTasks() {
 				c <- conn.worker
 			}
 		}
@@ -86,7 +111,7 @@ func managers() chan *Connection {
 	c := make(chan *Connection, len(connections))
 	go func() {
 		for _, conn := range connections {
-			if !conn.dead && conn.handshake.GetRecievesStats() {
+			if conn.alive() && conn.handshake.GetRecievesStats() {
 				c <- conn
 			}
 		}

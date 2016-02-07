@@ -11,20 +11,22 @@ type Worker struct {
 }
 
 func (w *Worker) consume() {
-	fmt.Println("consume()", taskChan)
-	for task := range taskChan {
+	fmt.Println("worker", w.name(), "started consuming")
+	var task *Task
+	for {
+		select {
+		case <-w.connection.doneCh:
+			fmt.Println("worker", w.name(), "stopped consuming")
+			return
+		case task = <-taskChan:
+		}
 		task.worker = w
 		task.execute(w.connection)
 		if task.failed {
 			retryChan <- task
 			fmt.Println("resubmitted", task.id)
 		}
-		if w.connection.dead {
-			fmt.Println("worker", w.name(), "stopped consuming")
-			return
-		}
 	}
-	panic("taskChan closed")
 }
 
 func (w *Worker) name() string {
