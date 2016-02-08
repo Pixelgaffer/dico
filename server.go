@@ -49,8 +49,8 @@ func handleClient(conn net.Conn) {
 			return
 		case msg := <-connection.send:
 			log.WithFields(log.Fields{
-				"addr": conn.RemoteAddr(),
-				"msg":  msg,
+				"addr":    conn.RemoteAddr(),
+				"message": msg,
 			}).Debug("sending data")
 			wrapped := protos.WrapMessage(msg)
 			data, err := proto.Marshal(wrapped)

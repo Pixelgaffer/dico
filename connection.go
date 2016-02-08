@@ -69,8 +69,8 @@ func (c *Connection) handle() {
 			c.worker.taskResultChan <- v
 		default:
 			log.WithFields(log.Fields{
-				"type": proto.MessageName(msg),
-				"msg":  v,
+				"type":    proto.MessageName(msg),
+				"message": v,
 			}).Error("connection.handle invalid type")
 		}
 	}
