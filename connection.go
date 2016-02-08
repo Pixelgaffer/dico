@@ -67,6 +67,8 @@ func (c *Connection) handle() {
 			c.worker.taskStatusChan <- v
 		case *protos.TaskResult:
 			c.worker.taskResultChan <- v
+		case *protos.SubmitCode:
+			addJobType(v)
 		default:
 			log.WithFields(log.Fields{
 				"type":    proto.MessageName(msg),
@@ -97,7 +99,7 @@ func (c *Connection) kill() {
 func (c *Connection) name() string {
 	conn := *c.conn
 	if c.handshake.GetName() == "" {
-		return fmt.Sprintf("[%v]", conn.LocalAddr())
+		return fmt.Sprintf("[%v]", conn.RemoteAddr())
 	}
 	return fmt.Sprintf("%v [%v]", c.handshake.GetName(), conn.RemoteAddr())
 }

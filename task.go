@@ -1,7 +1,6 @@
 package main
 
 import (
-	"sync"
 	"sync/atomic"
 
 	protos "github.com/Pixelgaffer/dico-proto"
@@ -11,7 +10,6 @@ import (
 )
 
 var currTaskID int64
-var taskIDLock sync.Mutex
 
 // Task is executed by an available worker
 type Task struct {
@@ -57,6 +55,7 @@ func (t *Task) execute(c *Connection) {
 	c.send <- &protos.DoTask{
 		Id:      proto.Int64(t.id),
 		Options: proto.String(t.options),
+		Code:    proto.String("TODO"),
 		JobType: proto.String("TODO"),
 	}
 	t.reportStatus(protos.TaskStatus_STARTED)
