@@ -11,12 +11,12 @@ type Worker struct {
 }
 
 func (w *Worker) consume() {
-	fmt.Println("worker", w.name(), "started consuming")
+	fmt.Println("worker", w.connection.name(), "started consuming")
 	var task *Task
 	for {
 		select {
 		case <-w.connection.doneCh:
-			fmt.Println("worker", w.name(), "stopped consuming")
+			fmt.Println("worker", w.connection.name(), "stopped consuming")
 			return
 		case task = <-taskChan:
 		}
@@ -27,9 +27,4 @@ func (w *Worker) consume() {
 			fmt.Println("resubmitted", task.id)
 		}
 	}
-}
-
-func (w *Worker) name() string {
-	conn := *w.connection.conn
-	return fmt.Sprintf("%v [%v]", w.connection.handshake.GetName(), conn.LocalAddr())
 }

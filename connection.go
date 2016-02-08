@@ -14,7 +14,6 @@ var connectionsLock sync.Mutex
 
 // Connection holds client-specific data
 type Connection struct {
-	name      string
 	worker    *Worker
 	conn      *net.Conn
 	handshake protos.Handshake
@@ -30,7 +29,6 @@ func (c *Connection) init(handshake protos.Handshake) {
 	c.recv = make(chan proto.Message)
 	c.doneCh = make(chan interface{})
 	c.handshake = handshake
-	c.name = handshake.GetName()
 	if handshake.GetRunsTasks() {
 		c.worker = &Worker{
 			connection:     c,
@@ -83,12 +81,19 @@ func (c *Connection) alive() bool {
 
 func (c *Connection) kill() {
 	if c.alive() {
-		conn := *c.conn
-		fmt.Println("connection", conn.LocalAddr(), "<->", conn.RemoteAddr(), "died.")
+		fmt.Println("connection", c.name(), "died.")
 		close(c.doneCh)
 	} else {
 		fmt.Println(".kill on dead connection")
 	}
+}
+
+func (c *Connection) name() string {
+	conn := *c.conn
+	if &c.handshake == nil {
+		return fmt.Sprintf("[%v]", conn.LocalAddr())
+	}
+	return fmt.Sprintf("%v [%v]", c.handshake.GetName(), conn.LocalAddr())
 }
 
 func workers() chan *Worker {

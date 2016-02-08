@@ -8,6 +8,7 @@ import (
 )
 
 import "github.com/bradfitz/slice"
+import protos "github.com/Pixelgaffer/dico-proto"
 
 type itemType int
 type item struct {
@@ -398,6 +399,7 @@ func generateTasks(optionGen string) {
 		task.id = getNextTaskID()
 		task.options = s
 		fmt.Println("generated", task)
+		task.reportStatus(protos.TaskStatus_REGISTERED)
 		taskChan <- task
 		if iterators[len(iterators)-1].finished() {
 			return

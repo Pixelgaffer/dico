@@ -16,7 +16,4 @@ func main() {
 	}()
 
 	listen()
-
-	//generateTasks("\\[0..2..8]", taskChan)
-	//generateTasks("\\(one|two|3) \\(eins|zwei|drei)")
 }

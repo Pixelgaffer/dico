@@ -17,8 +17,7 @@ func handleClient(conn net.Conn) {
 	fmt.Println(buff)
 	hs, err := protos.DecodeUnknownMessage(buff)
 	checkErr(err)
-	connection := &Connection{}
-	connection.conn = &conn
+	connection := &Connection{conn: &conn}
 	connection.init(*hs.(*protos.Handshake))
 	connectionsLock.Lock()
 	connections = append(connections, connection)

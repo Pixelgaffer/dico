@@ -28,7 +28,9 @@ func (t *Task) reportStatus(typ protos.TaskStatus_TaskStatusUpdate) {
 		Retries: proto.Int64(t.retries),
 	}
 	m.Type = &typ
-
+	if t.worker != nil {
+		m.Worker = proto.String(t.worker.connection.name())
+	}
 	for mang := range managers() {
 		mang.send <- m
 	}
@@ -47,7 +49,6 @@ func (t *Task) reportResult(data []byte) {
 
 func (t *Task) execute(c *Connection) {
 	fmt.Println("executing task", t.id, t.options)
-	t.reportStatus(protos.TaskStatus_REGISTERED)
 	t.failed = false
 	c.send <- &protos.DoTask{
 		Id:      proto.Int64(t.id),
@@ -72,6 +73,10 @@ func (t *Task) execute(c *Connection) {
 		case result := <-t.worker.taskResultChan:
 			fmt.Println("got task result")
 			t.reportResult(result.Data)
+			return
+		case <-t.worker.connection.doneCh:
+			t.failed = true
+			t.reportStatus(protos.TaskStatus_FAILED)
 			return
 		}
 	}
