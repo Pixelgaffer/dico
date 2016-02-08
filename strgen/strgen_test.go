@@ -29,13 +29,14 @@ func ExampleChoice() {
 
 func TestRangeAmount(t *testing.T) {
 	assertAmount := func(s string, amount int64) {
-		_, actual, _ := strgen.GenerateStrings(s)
+		_, actual, err := strgen.GenerateStrings(s)
+		assert.Nil(t, err)
 		assert.Equal(t, amount, actual, fmt.Sprintf("%v should produce %v results", s, amount))
 	}
 	// Finite, Integer ranges
 	assertAmount("\\[0..3]", 4)
-	assertAmount("\\[2..4]", 2)
-	assertAmount("\\[5..2]", 3)
+	assertAmount("\\[2..4]", 3)
+	assertAmount("\\[5..2]", 4)
 
 	// Finite, FP ranges
 	assertAmount("\\[1.5..2]", 1)
@@ -43,8 +44,8 @@ func TestRangeAmount(t *testing.T) {
 
 	// Finite, Integer ranges w/ step
 	assertAmount("\\[0..2..3]", 2)
-	assertAmount("\\[-2..0.5..0]", 4)
-	assertAmount("\\[5..1..2]", 3)
+	assertAmount("\\[-2..0.5..0]", 5)
+	assertAmount("\\[5..-1..2]", 4)
 
 	// Infinite
 	assertAmount("\\[0..]", -1)
@@ -66,6 +67,8 @@ func ExampleRange() {
 
 func TestInvalidInput(t *testing.T) {
 	_, _, err := strgen.GenerateStrings("\\[0..bar.\\]foo")
+	assert.NotNil(t, err)
+	_, _, err = strgen.GenerateStrings("\\[5..1..0]")
 	assert.NotNil(t, err)
 }
 

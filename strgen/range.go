@@ -68,9 +68,10 @@ func (i *RangeIterator) configure() error {
 		if err != nil {
 			return err
 		}
-		i.cycleLength = int(b - a)
-		if i.cycleLength < 0 {
-			i.cycleLength = -i.cycleLength
+		if a > b {
+			i.cycleLength = int(a - b + 1)
+		} else {
+			i.cycleLength = int(b - a + 1)
 		}
 		i.fn = func(i *RangeIterator) float64 {
 			if a < b {
@@ -91,9 +92,16 @@ func (i *RangeIterator) configure() error {
 		if err != nil {
 			return err
 		}
-		i.cycleLength = int((c - a) / b)
-		if i.cycleLength < 0 {
-			i.cycleLength = -i.cycleLength
+		if a > c {
+			if b >= 0 {
+				return fmt.Errorf("sequence doesnt reach its end")
+			}
+			i.cycleLength = int((a-c)/(-b) + 1)
+		} else {
+			if b <= 0 {
+				return fmt.Errorf("sequence doesnt reach its end")
+			}
+			i.cycleLength = int((c-a)/b + 1)
 		}
 		i.fn = func(i *RangeIterator) float64 {
 			if a < c {
