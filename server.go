@@ -1,20 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"net"
 
 	protos "github.com/Pixelgaffer/dico-proto"
-
 	"github.com/golang/protobuf/proto"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 func handleClient(conn net.Conn) {
 	defer conn.Close()
 	buff, err := protos.ReadPacket(conn)
 	checkErr(err)
-	fmt.Println("Decoding Handshake")
-	fmt.Println(buff)
+	log.WithField("buff", buff).Debug("Decoding Handshake")
 	hs, err := protos.DecodeUnknownMessage(buff)
 	checkErr(err)
 	connection := &Connection{conn: &conn}
@@ -29,15 +28,14 @@ func handleClient(conn net.Conn) {
 		for {
 			buff, err := protos.ReadPacket(conn)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err)
 				connection.kill()
 				return
 			}
-			fmt.Println("Decoding Packet")
-			fmt.Println(buff)
+			log.WithField("buff", buff).Debug("Decoding Packet")
 			msg, err := protos.DecodeUnknownMessage(buff)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err)
 				connection.kill()
 				return
 			}
@@ -50,13 +48,16 @@ func handleClient(conn net.Conn) {
 		case <-connection.doneCh:
 			return
 		case msg := <-connection.send:
-			fmt.Println("sending to", conn.RemoteAddr(), msg)
+			log.WithFields(log.Fields{
+				"addr": conn.RemoteAddr(),
+				"msg":  msg,
+			}).Debug("sending data")
 			wrapped := protos.WrapMessage(msg)
 			data, err := proto.Marshal(wrapped)
 			checkErr(err)
 			err = protos.WritePacket(conn, data)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err)
 				close(connection.doneCh)
 			}
 		}
@@ -65,17 +66,17 @@ func handleClient(conn net.Conn) {
 
 func checkErr(e error) {
 	if e != nil {
-		panic(e)
+		log.Panic(e)
 	}
 }
 
 func listen() {
-	fmt.Println("Listening on :7778...")
+	log.Info("Listening on :7778...")
 	ln, err := net.Listen("tcp", ":7778")
 	checkErr(err)
 	for {
 		conn, err := ln.Accept()
-		fmt.Println("new connection:", conn.LocalAddr(), "<->", conn.RemoteAddr())
+		log.WithField("addr", conn.RemoteAddr()).Info("new connection")
 		checkErr(err)
 		go handleClient(conn)
 	}

@@ -7,6 +7,8 @@ import (
 
 	protos "github.com/Pixelgaffer/dico-proto"
 	"github.com/golang/protobuf/proto"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var connections []*Connection
@@ -23,9 +25,12 @@ type Connection struct {
 }
 
 func (c *Connection) init(handshake protos.Handshake) {
-	fmt.Println("new Connection: runs_tasks", handshake.GetRunsTasks(), "manages_tasks", handshake.GetManagesTasks())
+	log.WithFields(log.Fields{
+		"runs_tasks":     handshake.GetRunsTasks(),
+		"manages_tasks":  handshake.GetManagesTasks(),
+		"recieves_stats": handshake.GetRecievesStats(),
+	}).Info("new connection")
 	c.send = make(chan proto.Message, 10) // TODO
-	fmt.Println("c.send is:", c.send)
 	c.recv = make(chan proto.Message)
 	c.doneCh = make(chan interface{})
 	c.handshake = handshake
@@ -36,7 +41,6 @@ func (c *Connection) init(handshake protos.Handshake) {
 			taskResultChan: make(chan *protos.TaskResult),
 		}
 		go c.worker.consume()
-		fmt.Println("new worker consuming:", c.worker)
 	}
 }
 
@@ -48,10 +52,9 @@ func (c *Connection) handle() {
 			return
 		case msg = <-c.recv:
 		}
-		fmt.Println(msg)
+		log.WithField("msg", msg).Debug("new msg")
 		switch v := msg.(type) {
 		case *protos.SubmitTask:
-			fmt.Println("taskSubmit", v)
 			if v.GetMulti() {
 				generateTasks(v.GetOptions())
 			} else {
@@ -65,7 +68,10 @@ func (c *Connection) handle() {
 		case *protos.TaskResult:
 			c.worker.taskResultChan <- v
 		default:
-			fmt.Println(proto.MessageName(msg), v)
+			log.WithFields(log.Fields{
+				"type": proto.MessageName(msg),
+				"msg":  v,
+			}).Error("connection.handle invalid type")
 		}
 	}
 }
@@ -81,19 +87,19 @@ func (c *Connection) alive() bool {
 
 func (c *Connection) kill() {
 	if c.alive() {
-		fmt.Println("connection", c.name(), "died.")
+		log.WithField("conn", c.name()).Info("connection died.")
 		close(c.doneCh)
 	} else {
-		fmt.Println(".kill on dead connection")
+		log.Info(".kill on dead connection")
 	}
 }
 
 func (c *Connection) name() string {
 	conn := *c.conn
-	if &c.handshake == nil {
+	if c.handshake.GetName() == "" {
 		return fmt.Sprintf("[%v]", conn.LocalAddr())
 	}
-	return fmt.Sprintf("%v [%v]", c.handshake.GetName(), conn.LocalAddr())
+	return fmt.Sprintf("%v [%v]", c.handshake.GetName(), conn.RemoteAddr())
 }
 
 func workers() chan *Worker {

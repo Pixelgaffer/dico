@@ -1,7 +1,33 @@
 package main
 
+import (
+	log "github.com/Sirupsen/logrus"
+
+	"github.com/evalphobia/logrus_sentry"
+)
+
 var taskChan chan *Task
 var retryChan chan *Task
+
+const sentryDsn = "https://7e42960b144a40e39929367c1dd298c4:f14e11166c414e7baa61cc4aec5bcdf4@sentry.thuermchen.com/5"
+
+func init() {
+	log.SetFormatter(&log.TextFormatter{
+	//	ForceColors: true,
+	})
+
+	hook, err := logrus_sentry.NewSentryHook(sentryDsn, []log.Level{
+		log.PanicLevel,
+		log.FatalLevel,
+		log.ErrorLevel,
+	})
+
+	if err == nil {
+		log.AddHook(hook)
+	} else {
+		log.Error(err)
+	}
+}
 
 func main() {
 	taskChan = make(chan *Task)

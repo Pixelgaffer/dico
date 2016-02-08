@@ -5,10 +5,12 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf8"
-)
 
-import "github.com/bradfitz/slice"
-import protos "github.com/Pixelgaffer/dico-proto"
+	protos "github.com/Pixelgaffer/dico-proto"
+	"github.com/bradfitz/slice"
+
+	log "github.com/Sirupsen/logrus"
+)
 
 type itemType int
 type item struct {
@@ -344,7 +346,7 @@ func (i *RangeIterator) setCyclePos(pos int) { i.cyclepos = pos }
 func generateTasks(optionGen string) {
 	//optionGen = "--compute -x \\[0..0.2..10] -y \\(on|off) -kek \\(1|2|3) \\[ 1.. ]"
 	//optionGen = "\\(one|two|3) \\(eins|zwei|drei)"
-	fmt.Println(optionGen)
+	log.WithField("options", optionGen).Info("generating tasks")
 	_, items := lex(optionGen)
 	var iterators []Iterator
 	var currIter Iterator
@@ -398,7 +400,7 @@ func generateTasks(optionGen string) {
 		task := new(Task)
 		task.id = getNextTaskID()
 		task.options = s
-		fmt.Println("generated", task)
+		log.WithField("task", task).Info("generated task")
 		task.reportStatus(protos.TaskStatus_REGISTERED)
 		taskChan <- task
 		if iterators[len(iterators)-1].finished() {

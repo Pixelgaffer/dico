@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
-import protos "github.com/Pixelgaffer/dico-proto"
+import (
+	protos "github.com/Pixelgaffer/dico-proto"
+	log "github.com/Sirupsen/logrus"
+)
 
 // Worker is directly linked to a Connection
 type Worker struct {
@@ -11,12 +13,12 @@ type Worker struct {
 }
 
 func (w *Worker) consume() {
-	fmt.Println("worker", w.connection.name(), "started consuming")
+	log.WithField("name", w.connection.name()).Info("worker started consuming")
 	var task *Task
 	for {
 		select {
 		case <-w.connection.doneCh:
-			fmt.Println("worker", w.connection.name(), "stopped consuming")
+			log.WithField("name", w.connection.name()).Info("worker stopped consuming")
 			return
 		case task = <-taskChan:
 		}
@@ -24,7 +26,10 @@ func (w *Worker) consume() {
 		task.execute(w.connection)
 		if task.failed {
 			retryChan <- task
-			fmt.Println("resubmitted", task.id)
+			log.WithFields(log.Fields{
+				"id":      task.id,
+				"options": task.options,
+			}).Info("resubmitted task")
 		}
 	}
 }

@@ -1,12 +1,13 @@
 package main
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 
 	protos "github.com/Pixelgaffer/dico-proto"
 	"github.com/golang/protobuf/proto"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var currTaskID int64
@@ -48,7 +49,10 @@ func (t *Task) reportResult(data []byte) {
 }
 
 func (t *Task) execute(c *Connection) {
-	fmt.Println("executing task", t.id, t.options)
+	log.WithFields(log.Fields{
+		"id":      t.id,
+		"options": t.options,
+	}).Info("executing task")
 	t.failed = false
 	c.send <- &protos.DoTask{
 		Id:      proto.Int64(t.id),
@@ -61,17 +65,20 @@ func (t *Task) execute(c *Connection) {
 		case status := <-t.worker.taskStatusChan:
 			switch status.GetType() {
 			case protos.TaskStatus_FAILED:
-				fmt.Println("task failed:", t.id)
+				log.WithFields(log.Fields{
+					"id":      t.id,
+					"options": t.options,
+				}).Info("task failed")
 				t.failed = true
 				t.reportStatus(status.GetType())
 				return
 			case protos.TaskStatus_FINISHED:
 				t.reportStatus(status.GetType())
 			default:
-				fmt.Println("invalid status.Type")
+				log.WithField("status", status).Error("invalid status.Type")
 			}
 		case result := <-t.worker.taskResultChan:
-			fmt.Println("got task result")
+			log.WithField("id", t.id).Info("got task result")
 			t.reportResult(result.Data)
 			return
 		case <-t.worker.connection.doneCh:
