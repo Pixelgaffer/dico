@@ -28,14 +28,14 @@ func handleClient(conn net.Conn) {
 		for {
 			buff, err := protos.ReadPacket(conn)
 			if err != nil {
-				log.Error(err)
+				log.Warn(err)
 				connection.kill()
 				return
 			}
 			log.WithField("buff", buff).Debug("Decoding Packet")
 			msg, err := protos.DecodeUnknownMessage(buff)
 			if err != nil {
-				log.Error(err)
+				log.Warn(err)
 				connection.kill()
 				return
 			}
@@ -57,8 +57,8 @@ func handleClient(conn net.Conn) {
 			checkErr(err)
 			err = protos.WritePacket(conn, data)
 			if err != nil {
-				log.Error(err)
-				close(connection.doneCh)
+				log.Warn(err)
+				connection.kill()
 			}
 		}
 	}

@@ -20,21 +20,13 @@ var bold colorFunc
 
 func init() {
 	errCol = ansi.ColorFunc("white+b:red")
-	warnCol = ansi.ColorFunc("orange+b")
+	warnCol = ansi.ColorFunc("208+b")
 	infoCol = ansi.ColorFunc("white+b")
 	debugCol = ansi.ColorFunc("white")
 	bold = ansi.ColorFunc("white+b")
 }
 
-type TextFormatter struct {
-	// Disable timestamp logging. useful when output is redirected to logging
-	// system that already adds timestamps.
-	DisableTimestamp bool
-	// The fields are sorted by default for a consistent output. For applications
-	// that log extremely frequently and don't use the JSON formatter this may not
-	// be desired.
-	DisableSorting bool
-}
+type TextFormatter struct{}
 
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var keys []string = make([]string, 0, len(entry.Data))
@@ -42,9 +34,7 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		keys = append(keys, k)
 	}
 
-	if !f.DisableSorting {
-		sort.Strings(keys)
-	}
+	sort.Strings(keys)
 
 	b := &bytes.Buffer{}
 

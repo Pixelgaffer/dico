@@ -18,8 +18,8 @@ func (i *ChoiceIterator) cycle() {
 		i.currentCycle = (i.currentCycle + 1) % i.length()
 	}
 }
-func (i *ChoiceIterator) get() string         { return i.choices[i.currentCycle] }
-func (i *ChoiceIterator) configure()          {}
-func (i *ChoiceIterator) length() int         { return len(i.choices) }
-func (i *ChoiceIterator) finished() bool      { return i.currentCycle == 0 && i.tmpCycle == 0 }
-func (i *ChoiceIterator) setCyclePos(pos int) { i.cyclepos = pos }
+func (i *ChoiceIterator) get() string          { return i.choices[i.currentCycle] }
+func (i *ChoiceIterator) configure() (e error) { return }
+func (i *ChoiceIterator) length() int          { return len(i.choices) }
+func (i *ChoiceIterator) finished() bool       { return i.currentCycle == 0 && i.tmpCycle == 0 }
+func (i *ChoiceIterator) setCyclePos(pos int)  { i.cyclepos = pos }

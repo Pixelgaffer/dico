@@ -12,7 +12,7 @@ import (
 func TestChoice(t *testing.T) {
 	channel, amount, err := strgen.GenerateStrings("\\(a|b)")
 	assert.Nil(t, err)
-	assert.Equal(t, 2, amount, "should produce two results")
+	assert.Equal(t, int64(2), amount, "should produce two results")
 	assert.EqualValues(t, []string{"a", "b"}, []string{<-channel, <-channel}, []string{"should be 'a'", "should be 'b'"})
 }
 
@@ -72,6 +72,6 @@ func TestInvalidInput(t *testing.T) {
 func TestBasicText(t *testing.T) {
 	channel, amount, err := strgen.GenerateStrings("foo bar")
 	assert.Nil(t, err)
-	assert.Equal(t, 1, amount, "should produce one result")
+	assert.Equal(t, int64(1), amount, "should produce one result")
 	assert.Equal(t, "foo bar", <-channel, "should produce the correct result")
 }

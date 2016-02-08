@@ -34,13 +34,13 @@ func (i *RangeIterator) get() string {
 	return strconv.FormatFloat(i.fn(i), 'f', -1, 32) // FIXME
 }
 
-func (i *RangeIterator) configure() {
-	chkParseError := func(i item) float64 {
+func (i *RangeIterator) configure() error {
+	chkParseError := func(i item) (float64, error) {
 		f, e := strconv.ParseFloat(i.val, 64)
 		if e != nil {
-			panic(fmt.Errorf("couldn't parse number: %v", i.val))
+			return 0, fmt.Errorf("couldn't parse number: %v", i.val)
 		}
-		return f
+		return f, nil
 	}
 
 	switch len(i.items) {
@@ -49,16 +49,25 @@ func (i *RangeIterator) configure() {
 		chkParseError(a)
 		i.cycleLength = -1
 		if b.typ == itemRangeSep {
-			start := chkParseError(a)
+			start, err := chkParseError(a)
+			if err != nil {
+				return err
+			}
 			i.fn = func(i *RangeIterator) float64 {
 				return start + float64(i.currentCycle)
 			}
 		} else {
-			panic(fmt.Errorf("..x not supported as range"))
+			return fmt.Errorf("..x not supported as range")
 		}
 	case 3:
-		a := chkParseError(i.items[0])
-		b := chkParseError(i.items[2])
+		a, err := chkParseError(i.items[0])
+		if err != nil {
+			return err
+		}
+		b, err := chkParseError(i.items[2])
+		if err != nil {
+			return err
+		}
 		i.cycleLength = int(b - a)
 		if i.cycleLength < 0 {
 			i.cycleLength = -i.cycleLength
@@ -70,9 +79,18 @@ func (i *RangeIterator) configure() {
 			return a - float64(i.currentCycle)
 		}
 	case 5:
-		a := chkParseError(i.items[0])
-		b := chkParseError(i.items[2])
-		c := chkParseError(i.items[4])
+		a, err := chkParseError(i.items[0])
+		if err != nil {
+			return err
+		}
+		b, err := chkParseError(i.items[2])
+		if err != nil {
+			return err
+		}
+		c, err := chkParseError(i.items[4])
+		if err != nil {
+			return err
+		}
 		i.cycleLength = int((c - a) / b)
 		if i.cycleLength < 0 {
 			i.cycleLength = -i.cycleLength
@@ -84,8 +102,9 @@ func (i *RangeIterator) configure() {
 			return a - float64(i.currentCycle)*b
 		}
 	default:
-		panic(fmt.Errorf("invalid amount of range items: %d", len(i.items)))
+		return fmt.Errorf("invalid amount of range items: %d", len(i.items))
 	}
+	return nil
 }
 func (i *RangeIterator) length() int         { return i.cycleLength }
 func (i *RangeIterator) finished() bool      { return i.currentCycle == 0 && i.tmpCycle == 0 }
