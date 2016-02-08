@@ -12,7 +12,6 @@ env:
     - BUILD_GOOS=windows
 install:
   - go get golang.org/x/tools/cmd/vet
-  - go get github.com/stretchr/testify/assert # should be installed by go test -i
   - go get -v github.com/Pixelgaffer/dicod
 script:
   - go build

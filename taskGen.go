@@ -1,8 +1,8 @@
 package main
 
 import (
+	"github.com/Mrmaxmeier/strgen"
 	protos "github.com/Pixelgaffer/dico-proto"
-	"github.com/Pixelgaffer/dicod/strgen"
 	log "github.com/Sirupsen/logrus"
 )
 
