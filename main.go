@@ -12,9 +12,7 @@ var retryChan chan *Task
 const sentryDsn = "http://7e42960b144a40e39929367c1dd298c4:f14e11166c414e7baa61cc4aec5bcdf4@sentry.thuermchen.com/5" // TODO: https sentry
 
 func init() {
-	log.SetFormatter(&log.TextFormatter{
-	//	ForceColors: true,
-	})
+	log.SetFormatter(&TextFormatter{})
 
 	hook, err := logrus_sentry.NewSentryHook(sentryDsn, []log.Level{
 		log.PanicLevel,
