@@ -7,7 +7,7 @@ import (
 )
 
 var jobTypes []*JobType
-var jobTypesLock sync.Mutex
+var jobTypesLock sync.Mutex // TODO: struct
 
 type JobType struct {
 	archive []byte

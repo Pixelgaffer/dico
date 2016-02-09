@@ -7,16 +7,27 @@ import (
 )
 
 func generateTasks(str string) {
-	c, a, err := strgen.GenerateStrings(str)
+	g := &strgen.Generator{Source: str}
 	log.WithFields(log.Fields{
-		"amount":  a,
-		"options": str,
+		"amount":  g.Amount,
+		"options": g.Source,
 	}).Info("will generate tasks")
+	if g.Err != nil {
+		log.Error(g.Err)
+		return
+	}
+	err := g.Configure()
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	for str := range c {
+	go g.Generate()
+	for g.Alive() {
+		str, err := g.Next()
+		if err != nil {
+			log.Error(err)
+			break
+		}
 		task := new(Task)
 		task.id = getNextTaskID()
 		task.options = str
@@ -24,4 +35,9 @@ func generateTasks(str string) {
 		task.reportStatus(protos.TaskStatus_REGISTERED)
 		taskChan <- task
 	}
+	log.WithFields(log.Fields{
+		"options": g.Source,
+		"alive":   g.Alive(),
+		"err":     g.Err,
+	}).Info("generating tasks stopped")
 }

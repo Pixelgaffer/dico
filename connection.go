@@ -12,7 +12,7 @@ import (
 )
 
 var connections []*Connection
-var connectionsLock sync.Mutex
+var connectionsLock sync.Mutex // TODO: struct
 
 // Connection holds client-specific data
 type Connection struct {
