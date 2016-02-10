@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 
 	protos "github.com/Pixelgaffer/dico-proto"
@@ -18,9 +19,10 @@ func handleClient(conn net.Conn) {
 	checkErr(err)
 	connection := &Connection{conn: &conn}
 	connection.init(*hs.(*protos.Handshake))
-	connectionsLock.Lock()
-	connections = append(connections, connection)
-	connectionsLock.Unlock()
+	connections.Lock()
+	connections.all = append(connections.all, connection)
+	connections.Unlock()
+	gcConnections()
 
 	go connection.handle()
 
@@ -28,14 +30,14 @@ func handleClient(conn net.Conn) {
 		for {
 			buff, err := protos.ReadPacket(conn)
 			if err != nil {
-				log.Warn(err)
+				log.WithField("addr", conn.RemoteAddr()).Warn(err)
 				connection.kill()
 				return
 			}
 			log.WithField("buff", buff).Debug("Decoding Packet")
 			msg, err := protos.DecodeUnknownMessage(buff)
 			if err != nil {
-				log.Warn(err)
+				log.WithField("addr", conn.RemoteAddr()).Warn(err)
 				connection.kill()
 				return
 			}
@@ -57,7 +59,7 @@ func handleClient(conn net.Conn) {
 			checkErr(err)
 			err = protos.WritePacket(conn, data)
 			if err != nil {
-				log.Warn(err)
+				log.WithField("addr", conn.RemoteAddr()).Warn(err)
 				connection.kill()
 			}
 		}
@@ -66,13 +68,14 @@ func handleClient(conn net.Conn) {
 
 func checkErr(e error) {
 	if e != nil {
-		log.Panic(e)
+		log.Warn(e)
 	}
 }
 
-func listen() {
-	log.Info("Listening on :7778...")
-	ln, err := net.Listen("tcp", ":7778")
+func listen(port int) {
+	pstr := fmt.Sprintf(":%d", port)
+	log.Info("Listening on " + pstr + "...")
+	ln, err := net.Listen("tcp", pstr)
 	checkErr(err)
 	for {
 		conn, err := ln.Accept()

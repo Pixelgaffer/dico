@@ -6,8 +6,10 @@ import (
 	protos "github.com/Pixelgaffer/dico-proto"
 )
 
-var jobTypes []*JobType
-var jobTypesLock sync.Mutex // TODO: struct
+var jobTypes struct {
+	all []*JobType
+	sync.Mutex
+}
 
 type JobType struct {
 	archive []byte
@@ -17,11 +19,11 @@ type JobType struct {
 }
 
 func sendJobTypes(w *Worker) {
-	jobTypesLock.Lock()
-	for _, jt := range jobTypes {
+	jobTypes.Lock()
+	for _, jt := range jobTypes.all {
 		w.connection.send <- jt.proto
 	}
-	jobTypesLock.Unlock()
+	jobTypes.Unlock()
 }
 
 func addJobType(p *protos.SubmitCode) {
@@ -31,9 +33,9 @@ func addJobType(p *protos.SubmitCode) {
 		archive: p.GetArchive(),
 		proto:   p,
 	}
-	jobTypesLock.Lock()
-	jobTypes = append(jobTypes, jt)
-	jobTypesLock.Unlock()
+	jobTypes.Lock()
+	jobTypes.all = append(jobTypes.all, jt)
+	jobTypes.Unlock()
 	for worker := range workers() {
 		worker.connection.send <- p
 	}

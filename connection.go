@@ -11,8 +11,10 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-var connections []*Connection
-var connectionsLock sync.Mutex // TODO: struct
+var connections struct {
+	sync.Mutex
+	all []*Connection
+}
 
 // Connection holds client-specific data
 type Connection struct {
@@ -105,31 +107,43 @@ func (c *Connection) name() string {
 }
 
 func workers() chan *Worker {
-	connectionsLock.Lock()
-	c := make(chan *Worker, len(connections))
+	connections.Lock()
+	c := make(chan *Worker, len(connections.all))
 	go func() {
-		for _, conn := range connections {
+		for _, conn := range connections.all {
 			if conn.alive() && conn.handshake.GetRunsTasks() {
 				c <- conn.worker
 			}
 		}
 		close(c)
-		connectionsLock.Unlock()
+		connections.Unlock()
 	}()
 	return c
 }
 
 func managers() chan *Connection {
-	connectionsLock.Lock()
-	c := make(chan *Connection, len(connections))
+	connections.Lock()
+	c := make(chan *Connection, len(connections.all))
 	go func() {
-		for _, conn := range connections {
+		for _, conn := range connections.all {
 			if conn.alive() && conn.handshake.GetRecievesStats() {
 				c <- conn
 			}
 		}
 		close(c)
-		connectionsLock.Unlock()
+		connections.Unlock()
 	}()
 	return c
+}
+
+func gcConnections() {
+	connections.Lock()
+	var nC []*Connection
+	for _, conn := range connections.all {
+		if conn.alive() {
+			nC = append(nC, conn)
+		}
+	}
+	connections.all = nC
+	connections.Unlock()
 }

@@ -29,7 +29,7 @@ func init() {
 type TextFormatter struct{}
 
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	var keys []string = make([]string, 0, len(entry.Data))
+	var keys = make([]string, 0, len(entry.Data))
 	for k := range entry.Data {
 		keys = append(keys, k)
 	}
