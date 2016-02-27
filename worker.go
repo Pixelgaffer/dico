@@ -14,6 +14,7 @@ type Worker struct {
 }
 
 func (w *Worker) consume() {
+	stats.Pulse()
 	log.WithField("name", w.connection.name()).Info("worker started consuming")
 	var task *Task
 	for {

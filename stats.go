@@ -2,6 +2,8 @@ package main
 
 import (
 	"runtime"
+	"strings"
+	"sync"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -9,10 +11,26 @@ import (
 )
 
 type AccumulatedStats struct {
+	sync.Mutex
 	since          time.Time
 	submittedTasks int
 	completedTasks int
 	failedTasks    int
+}
+
+func (s *AccumulatedStats) Reset() {
+	s.Lock()
+	s.since = time.Now()
+	s.submittedTasks = 0
+	s.completedTasks = 0
+	s.failedTasks = 0
+	s.Unlock()
+}
+
+func (s *AccumulatedStats) With(f func(s *AccumulatedStats)) {
+	s.Lock()
+	f(s)
+	s.Unlock()
 }
 
 type Stats struct {
@@ -20,7 +38,7 @@ type Stats struct {
 	mem          runtime.MemStats
 	client       influx.Client
 	influxConfig influx.HTTPConfig
-	accumulated  AccumulatedStats
+	accumulated  *AccumulatedStats
 	bp           influx.BatchPoints
 }
 
@@ -44,82 +62,96 @@ func (s *Stats) initClient() (err error) {
 	return err
 }
 
-func (s *Stats) pulse() {
+func (s *Stats) Pulse() {
 	s.imp <- nil
 }
 
 func (s *Stats) reportRuntimeStats() {
 	runtime.ReadMemStats(&s.mem)
-	if s.mem.LastGC > 0 && false {
-		log.Println()
-		log.Println(s.mem.Alloc)
-		log.Println(s.mem.HeapSys)
-		log.Println(s.mem.LastGC)
-		log.Println(s.mem.NextGC)
-	}
 
-	tags := map[string]string{"mem": "memory"}
-	fields := map[string]interface{}{
-		"total_alloc": s.mem.TotalAlloc,
-		"alloc":       s.mem.Alloc,
-		"heap_sys":    s.mem.HeapSys,
-		"next_gc":     s.mem.NextGC,
-	}
-	pt, err := influx.NewPoint("memory", tags, fields, time.Now())
-	s.bp.AddPoint(pt)
-	if err != nil {
-		log.Error(err)
-	}
-
-	pt, err = influx.NewPoint(
-		"goroutines",
-		map[string]string{"goroutines": "number-of-goroutines"},
-		map[string]interface{}{"goroutines": runtime.NumGoroutine()},
-		time.Now(),
+	s.newPoint(
+		"memory",
+		"total_alloc", s.mem.TotalAlloc,
+		"alloc", s.mem.Alloc,
+		"heap_sys", s.mem.HeapSys,
+		"next_gc", s.mem.NextGC,
 	)
-	s.bp.AddPoint(pt)
-	if err != nil {
-		log.Error(err)
-	}
 
-	pt, err = influx.NewPoint(
-		"next-task",
-		map[string]string{"next-task": "next-task"},
-		map[string]interface{}{"next_task": currTaskID},
-		time.Now(),
-	)
-	s.bp.AddPoint(pt)
-	if err != nil {
-		log.Error(err)
-	}
-
+	s.newPoint("goroutines", runtime.NumGoroutine())
+	s.newPoint("next_task", currTaskID)
 }
 
 func (s *Stats) reportAccumulated() {
-	s.accumulated = AccumulatedStats{since: time.Now()}
+	s.accumulated.Lock()
+	//sinceSec := float64(s.accumulated.since.Unix())
+	s.newPoint(
+		"tasks",
+		"submitted", s.accumulated.submittedTasks,
+		"completed", s.accumulated.completedTasks,
+		"failed", s.accumulated.failedTasks,
+	)
+	s.accumulated.Unlock()
+	s.accumulated.Reset()
+}
+
+func (s *Stats) newPoint(name string, values ...interface{}) {
+	var fields map[string]interface{}
+	if len(values) == 1 {
+		fields = map[string]interface{}{name: values[0]}
+	} else if len(values)%2 == 0 {
+		fields = make(map[string]interface{})
+		for i := 0; i < len(values)/2; i++ {
+			fields[values[i*2].(string)] = values[i*2+1]
+		}
+	} else {
+		panic("invalid number of args")
+	}
+	pt, err := influx.NewPoint(
+		strings.Replace(name, "_", "-", -1),
+		map[string]string{},
+		fields,
+		time.Now(),
+	)
+	s.bp.AddPoint(pt)
+	if err != nil {
+		log.Error(err)
+	}
 }
 
 func (s *Stats) sendPeriodicalReports() {
 	idleTicker := time.NewTicker(time.Minute)
-	ticker := time.NewTicker(time.Second * 2)
+	ticker := time.NewTicker(time.Second)
 	for {
+		isImpulse := false
 		select {
 		case <-ticker.C:
-			active := false
+			anyActive := false
 			for w := range workers() {
-				active = active || w.active
+				anyActive = anyActive || w.active
 			}
-			if !active {
+			if !anyActive {
 				continue
 			}
 			log.Debug("ticktock, active!")
 		case <-idleTicker.C:
 			log.Debug("ticktock, idle!")
 		case <-s.imp:
+			isImpulse = true
 			drainCh(s.imp)
 		}
+		var activeWorkers int
+		var numWorkers int
+		for w := range workers() {
+			numWorkers++
+			if w.active {
+				activeWorkers++
+			}
+		}
 		s.reportRuntimeStats()
-		s.reportAccumulated()
+		if !isImpulse {
+			s.reportAccumulated()
+		}
+		s.newPoint("workers", "workers", numWorkers, "active", activeWorkers)
 		err := s.client.Write(s.bp)
 		if err != nil {
 			log.Error(err)
@@ -129,6 +161,7 @@ func (s *Stats) sendPeriodicalReports() {
 }
 
 var stats Stats
+var accumulatedStats AccumulatedStats
 
 func init() {
 	go func() {
@@ -145,15 +178,15 @@ func init() {
 			log.Error(err)
 			return
 		}
-		stats.accumulated = AccumulatedStats{since: time.Now()}
-		stats.reportRuntimeStats()
-		stats.reportAccumulated()
+		accumulatedStats.Reset()
+		stats.accumulated = &accumulatedStats
 		err = stats.client.Write(stats.bp)
 		if err != nil {
 			log.Error(err)
 			return
 		}
 		go stats.sendPeriodicalReports()
+		stats.Pulse()
 	}()
 }
 

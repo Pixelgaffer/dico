@@ -27,6 +27,7 @@ type Connection struct {
 }
 
 func (c *Connection) init(handshake protos.Handshake) {
+	stats.Pulse()
 	log.WithFields(log.Fields{
 		"runs_tasks":     handshake.GetRunsTasks(),
 		"manages_tasks":  handshake.GetManagesTasks(),
@@ -93,8 +94,9 @@ func (c *Connection) kill() {
 	if c.alive() {
 		log.WithField("conn", c.name()).Info("connection died.")
 		close(c.doneCh)
+		stats.Pulse()
 	} else {
-		log.Info(".kill on dead connection")
+		log.Info(".kill() on dead connection")
 	}
 }
 

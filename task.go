@@ -47,6 +47,7 @@ func (t *Task) reportResult(data []byte) {
 }
 
 func (t *Task) execute(c *Connection) {
+	stats.Pulse()
 	log.WithFields(log.Fields{
 		"id":      t.id,
 		"options": t.options,
@@ -70,9 +71,15 @@ func (t *Task) execute(c *Connection) {
 				}).Info("task failed")
 				t.failed = true
 				t.reportStatus(status.GetType())
+				accumulatedStats.With(func(s *AccumulatedStats) {
+					s.failedTasks++
+				})
 				return
 			case protos.TaskStatus_FINISHED:
 				t.reportStatus(status.GetType())
+				accumulatedStats.With(func(s *AccumulatedStats) {
+					s.completedTasks++
+				})
 			default:
 				log.WithField("status", status).Error("invalid status.Type")
 			}

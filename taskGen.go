@@ -34,6 +34,9 @@ func generateTasks(str string) {
 		log.WithField("task", task).Info("generated task")
 		task.reportStatus(protos.TaskStatus_REGISTERED)
 		taskChan <- task
+		accumulatedStats.With(func(s *AccumulatedStats) {
+			s.submittedTasks++
+		})
 	}
 	log.WithFields(log.Fields{
 		"options": g.Source,
