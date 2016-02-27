@@ -38,6 +38,8 @@ func generateTasks(str string) {
 	log.WithFields(log.Fields{
 		"options": g.Source,
 		"alive":   g.Alive(),
+		"amount":  g.Amount,
+		"left":    g.Left,
 		"err":     g.Err,
 	}).Info("generating tasks stopped")
 }

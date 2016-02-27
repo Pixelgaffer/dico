@@ -23,17 +23,20 @@ type Dicod struct {
 func init() {
 	log.SetFormatter(&TextFormatter{})
 
-	hook, err := logrus_sentry.NewSentryHook(sentryDsn, []log.Level{
-		log.PanicLevel,
-		log.FatalLevel,
-		log.ErrorLevel,
-	})
+	go func() {
+		hook, err := logrus_sentry.NewSentryHook(sentryDsn, []log.Level{
+			log.PanicLevel,
+			log.FatalLevel,
+			log.ErrorLevel,
+		})
 
-	if err == nil {
-		log.AddHook(hook)
-	} else {
-		log.Error(err)
-	}
+		if err == nil {
+			log.AddHook(hook)
+			log.Debug("added sentry hook")
+		} else {
+			log.Error(err)
+		}
+	}()
 }
 
 func main() {
